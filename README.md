@@ -1,4 +1,4 @@
-[Business_Forecasting_Repo_README (2).md](https://github.com/user-attachments/files/32713744/Business_Forecasting_Repo_README.2.md)
+
 # Business Forecasting — Fall 2026 📈
 
 Hi! I’m **Kathan Patel**, and this repository contains my homework and assignments for Business Forecasting.
