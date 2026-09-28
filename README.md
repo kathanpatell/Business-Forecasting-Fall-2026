@@ -1,5 +1,5 @@
 
-# Business Forecasting — Fall 2026 📈
+# Business Forecasting — Fall 2026 
 
 Hi! I’m **Kathan Patel**, and this repository contains my homework and assignments for Business Forecasting.
 
@@ -15,4 +15,4 @@ I’ll use this repository to keep all my work for the class organized in one pl
 
 The repository will be updated as I complete new assignments throughout the semester.
 
-Hopefully, by the end of the class, my forecasts will be more accurate than my guesses about how long the homework will take.
+Hope this class helps me forecast my grades in every class.
