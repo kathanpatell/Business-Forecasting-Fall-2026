@@ -1,0 +1,61 @@
+---
+title: "Forecasting Data Homework"
+author: "Kathan Patel"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## 1. Data File
+
+For this homework, I selected the **U.S. monthly unemployment rate**. The data file is named `US_Monthly_Unemployment_Rate_2000_2025.xlsx`.
+
+The file contains 309 monthly observations from January 2000 through September 2025. The unemployment rate is measured as a percent and is seasonally adjusted. The data was downloaded from the [Federal Reserve Bank of St. Louis (FRED)](https://fred.stlouisfed.org/series/UNRATE). The underlying unemployment statistics are produced by the U.S. Bureau of Labor Statistics.
+
+The Excel file can be imported with this basic R code. It is included for reference, but it is not run while this report is being knitted because importing the data will be covered during the next class.
+
+```{r import-data, eval=FALSE}
+library(readxl)
+unemployment <- read_excel("US_Monthly_Unemployment_Rate_2000_2025.xlsx")
+head(unemployment)
+tail(unemployment)
+```
+
+## 2. Detailed Description and Data Dictionary
+
+Each row in the file represents one month. There are two columns: the month and the unemployment rate for that month. The date column is in `YYYY-MM-DD` format. The day is always `01` because it marks the month; it does not mean the rate was collected only on the first day.
+
+The unemployment rate is the number of unemployed people as a percentage of the civilian labor force. The labor force includes people who are employed and people who are unemployed but actively looking for work. Seasonal adjustment is used to reduce normal changes that happen around the same time every year.
+
+| Variable Name | Readable Name | Data Type | Units or Format | Allowed Values in This File | Definition |
+|:--------------|:--------------|:----------|:----------------|:----------------------------|:-----------|
+| `observation_date` | Month | Date | `YYYY-MM-DD` | Monthly dates from `2000-01-01` through `2025-09-01` | The month connected to the unemployment-rate observation. |
+| `UNRATE` | U.S. unemployment rate | Numeric | Percent, seasonally adjusted | 3.4 to 14.8; no missing values | Unemployed people as a percentage of the civilian labor force. |
+
+This data dictionary follows the general suggestions in the [OSF data dictionary guide](https://help.osf.io/article/217-how-to-make-a-data-dictionary), including the exact variable name, a readable name, the data type, units, valid values, and a definition.
+
+## 3. Data Collection Methodology
+
+The unemployment rate is based on the **Current Population Survey (CPS)**. The U.S. Census Bureau conducts this survey for the U.S. Bureau of Labor Statistics every month. About 60,000 eligible households are included in the monthly sample. Interviews are completed by telephone and in person.
+
+The survey asks about work activity during the reference week that includes the 12th day of the month. It covers the civilian, noninstitutional population age 16 and older in the 50 states and the District of Columbia. Active-duty military personnel and people living in institutions are not included.
+
+Based on their answers, people are classified as employed, unemployed, or not in the labor force. A person is counted as unemployed if the person did not have a job, was available for work, and had actively looked for work during the previous four weeks. The unemployment rate is calculated as:
+
+$$
+\text{Unemployment Rate} = \frac{\text{Number of Unemployed People}}{\text{Civilian Labor Force}} \times 100
+$$
+
+The Bureau of Labor Statistics prepares and publishes the monthly estimate. FRED provides the official series online and makes it available for download. More information about the survey is available on the [BLS Current Population Survey overview](https://www.bls.gov/cps/cps_over.htm).
+
+## 4. Why This Dataset Intrigues Me
+
+I chose this dataset because unemployment connects economic conditions to people's daily lives. The selected time period includes the 2001 recession, the Great Recession, the large increase during the COVID-19 pandemic, and the later recovery. This gives the series both gradual changes and a sudden shock.
+
+I am interested in seeing how a forecasting model handles these different patterns. A model may work well when the unemployment rate changes slowly, but an unexpected event can make forecasting much harder. This dataset should be useful for learning both what a forecasting model can do and where it can have limitations.
+
+The data is already arranged in monthly order, so it will be ready to import and convert to a time-series variable during the next class.
+
+gethtml()
