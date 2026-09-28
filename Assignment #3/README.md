@@ -4,7 +4,7 @@
 
 For this homework, I selected the U.S. monthly unemployment rate as the time-series dataset that I will use to practice forecasting models. The dataset contains 309 monthly observations from January 2000 through September 2025. The rate is reported as a percentage and is seasonally adjusted.
 
-The data file was found in the Files section on Canvas, where it was uploaded by the professor. The underlying statistics are collected by the U.S. Bureau of Labor Statistics through the Current Population Survey. Information about the official series is also available from the Federal Reserve Bank of St. Louis FRED database.
+The underlying statistics are collected by the U.S. Bureau of Labor Statistics through the Current Population Survey. Information about the official series is also available from the Federal Reserve Bank of St. Louis FRED database.
 
 ## What Was Done
 
