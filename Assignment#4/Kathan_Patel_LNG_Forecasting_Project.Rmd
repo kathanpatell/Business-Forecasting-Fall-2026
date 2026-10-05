@@ -1,0 +1,460 @@
+---
+title: "Forecasting U.S. LNG Export Volumes"
+subtitle: "South Korea, India, and China"
+author: "Kathan Patel"
+date: "October 4, 2026"
+output:
+  html_document:
+    self_contained: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 9,
+  fig.height = 5
+)
+options(scipen = 999)
+```
+
+## Project Question and Data
+
+This project forecasts monthly U.S. liquefied natural gas (LNG) export volume to three countries: South Korea, India, and China. I selected the countries because they have different relationships with the United States. South Korea is a close U.S. ally, India is a strategic partner that also follows strategic autonomy, and China is a strategic competitor.
+
+The business variable is export volume, measured in **million cubic feet**. The data comes from the U.S. Energy Information Administration (EIA) and covers January 2017 through December 2025. There are 108 monthly observations for each country.
+
+This project compares whether the markets have different patterns and whether the same forecasting method works best for all three. The relationship categories provide context, but they are not variables in the forecasting models. Therefore, the results cannot prove that politics caused a change in LNG exports. Contracts, prices, shipping costs, demand, supply, weather, and policy can also affect the series.
+
+Official EIA series:
+
+- [South Korea](https://www.eia.gov/dnav/ng/hist/ngm_epg0_eve_nus-nks_mmcfm.htm)
+- [India](https://www.eia.gov/dnav/ng/hist/ngm_epg0_eve_nus-nin_mmcfm.htm)
+- [China](https://www.eia.gov/dnav/ng/hist/ngm_epg0_eve_nus-nch_mmcfm.htm)
+
+```{r packages-and-data}
+library(readxl)
+library(fpp2)
+library(TTR)
+
+lng <- read_excel(
+  "US_LNG_Export_Volumes_2017_2025.xlsx",
+  sheet = "Monthly Data"
+)
+
+head(lng)
+tail(lng)
+```
+
+The three columns contain valid monthly quantities. A zero means the EIA reported no export volume to that destination during that month. It is not treated as missing data.
+
+## Create the Time Series
+
+The frequency is 12 because the data is monthly.
+
+```{r create-time-series}
+korea_ts <- ts(lng$South_Korea, start = c(2017, 1), frequency = 12)
+india_ts <- ts(lng$India, start = c(2017, 1), frequency = 12)
+china_ts <- ts(lng$China, start = c(2017, 1), frequency = 12)
+
+all_range <- range(korea_ts, india_ts, china_ts)
+
+plot(
+  korea_ts,
+  type = "l",
+  col = "steelblue",
+  lwd = 2,
+  ylim = all_range,
+  main = "Monthly U.S. LNG Export Volume by Destination",
+  xlab = "Year",
+  ylab = "Million Cubic Feet"
+)
+lines(india_ts, col = "darkorange", lwd = 2)
+lines(china_ts, col = "firebrick", lwd = 2)
+legend(
+  "topleft",
+  legend = c("South Korea", "India", "China"),
+  col = c("steelblue", "darkorange", "firebrick"),
+  lty = 1,
+  lwd = 2,
+  bty = "n"
+)
+```
+
+The plot shows that the three markets do not move in exactly the same way. South Korea has fairly regular shipments, India has several sharp peaks, and China has long periods with low or zero exports. China also falls to almost zero throughout 2025. These differences make the dataset useful for comparing forecasting methods.
+
+## Forecast Setup
+
+I use all available observations from January 2017 through December 2025. Each model then forecasts the next 12 months, January through December 2026. This follows the same full-series forecasting approach used in the class exercise.
+
+## 1. Forecasting Models Used in Class
+
+I use the class methods below. The forecast horizon is 12 months for every model.
+
+- Simple average
+- Naive
+- Naive with drift, which is the trend-adjusted naive method
+- Seasonal naive
+- Simple exponential smoothing (SES)
+- Holt's method
+- Holt-Winters method
+
+### South Korea
+
+```{r korea-models}
+kr_mean   <- meanf(korea_ts, h = 12)
+kr_naive  <- naive(korea_ts, h = 12)
+kr_drift  <- rwf(korea_ts, h = 12, drift = TRUE)
+kr_snaive <- snaive(korea_ts, h = 12)
+
+kr_ses_model <- HoltWinters(korea_ts, beta = FALSE, gamma = FALSE)
+kr_ses <- forecast(kr_ses_model, h = 12)
+
+kr_holt_model <- HoltWinters(korea_ts, gamma = FALSE)
+kr_holt <- forecast(kr_holt_model, h = 12)
+
+kr_winters_model <- HoltWinters(korea_ts)
+kr_winters <- forecast(kr_winters_model, h = 12)
+```
+
+### India
+
+```{r india-models}
+in_mean   <- meanf(india_ts, h = 12)
+in_naive  <- naive(india_ts, h = 12)
+in_drift  <- rwf(india_ts, h = 12, drift = TRUE)
+in_snaive <- snaive(india_ts, h = 12)
+
+in_ses_model <- HoltWinters(india_ts, beta = FALSE, gamma = FALSE)
+in_ses <- forecast(in_ses_model, h = 12)
+
+in_holt_model <- HoltWinters(india_ts, gamma = FALSE)
+in_holt <- forecast(in_holt_model, h = 12)
+
+in_winters_model <- HoltWinters(india_ts)
+in_winters <- forecast(in_winters_model, h = 12)
+```
+
+### China
+
+```{r china-models}
+cn_mean   <- meanf(china_ts, h = 12)
+cn_naive  <- naive(china_ts, h = 12)
+cn_drift  <- rwf(china_ts, h = 12, drift = TRUE)
+cn_snaive <- snaive(china_ts, h = 12)
+
+cn_ses_model <- HoltWinters(china_ts, beta = FALSE, gamma = FALSE)
+cn_ses <- forecast(cn_ses_model, h = 12)
+
+cn_holt_model <- HoltWinters(china_ts, gamma = FALSE)
+cn_holt <- forecast(cn_holt_model, h = 12)
+
+cn_winters_model <- HoltWinters(china_ts)
+cn_winters <- forecast(cn_winters_model, h = 12)
+```
+
+### Moving-Average Smoothing
+
+The class `ma()` command creates a smoothed historical series rather than a future forecast. I use MA(5) and MA(9) to view the pattern, as in the class exercise, but I do not put them in the forecast-accuracy table.
+
+```{r moving-averages, fig.height=8}
+kr_ma5 <- ma(korea_ts, order = 5)
+kr_ma9 <- ma(korea_ts, order = 9)
+
+in_ma5 <- ma(india_ts, order = 5)
+in_ma9 <- ma(india_ts, order = 9)
+
+cn_ma5 <- ma(china_ts, order = 5)
+cn_ma9 <- ma(china_ts, order = 9)
+
+par(mfrow = c(3, 1))
+
+plot(korea_ts, main = "South Korea Moving Averages", ylab = "Million Cubic Feet", xlab = "Year")
+lines(kr_ma5, col = "red", lwd = 2)
+lines(kr_ma9, col = "blue", lwd = 2)
+legend("topleft", c("Actual", "MA(5)", "MA(9)"), col = c("black", "red", "blue"), lty = 1, bty = "n")
+
+plot(india_ts, main = "India Moving Averages", ylab = "Million Cubic Feet", xlab = "Year")
+lines(in_ma5, col = "red", lwd = 2)
+lines(in_ma9, col = "blue", lwd = 2)
+legend("topleft", c("Actual", "MA(5)", "MA(9)"), col = c("black", "red", "blue"), lty = 1, bty = "n")
+
+plot(china_ts, main = "China Moving Averages", ylab = "Million Cubic Feet", xlab = "Year")
+lines(cn_ma5, col = "red", lwd = 2)
+lines(cn_ma9, col = "blue", lwd = 2)
+legend("topleft", c("Actual", "MA(5)", "MA(9)"), col = c("black", "red", "blue"), lty = 1, bty = "n")
+
+par(mfrow = c(1, 1))
+```
+
+MA(9) is smoother than MA(5) because it averages more months. MA(5) reacts faster when export volume changes. This agrees with the class discussion that a larger moving-average order creates more smoothing.
+
+## 2. Understanding the Model Output
+
+The simple average gives the same forecast for every future month. The naive model repeats the last observed value. The drift model extends the average historical change. Seasonal naive repeats the matching months from the previous year.
+
+The three exponential-smoothing models estimate different parts of the series:
+
+- SES estimates the current level only.
+- Holt estimates a level and a trend.
+- Holt-Winters estimates a level, trend, and monthly seasonality.
+
+The smoothing parameters are alpha for level, beta for trend, and gamma for seasonality. A larger parameter gives more weight to recent changes in that part of the model. SSE is the sum of squared fitted errors for the historical data. I report it to understand the model output. In the accuracy section, I divide the squared errors by the number of fitted observations to compare models with MSE.
+
+```{r smoothing-output}
+smoothing_output <- data.frame(
+  Country = c(
+    "South Korea", "South Korea", "South Korea",
+    "India", "India", "India",
+    "China", "China", "China"
+  ),
+  Model = rep(c("SES", "Holt", "Holt-Winters"), 3),
+  Alpha = round(c(
+    kr_ses_model$alpha, kr_holt_model$alpha, kr_winters_model$alpha,
+    in_ses_model$alpha, in_holt_model$alpha, in_winters_model$alpha,
+    cn_ses_model$alpha, cn_holt_model$alpha, cn_winters_model$alpha
+  ), 3),
+  Beta = c(
+    NA, round(kr_holt_model$beta, 3), round(kr_winters_model$beta, 3),
+    NA, round(in_holt_model$beta, 3), round(in_winters_model$beta, 3),
+    NA, round(cn_holt_model$beta, 3), round(cn_winters_model$beta, 3)
+  ),
+  Gamma = c(
+    NA, NA, round(kr_winters_model$gamma, 3),
+    NA, NA, round(in_winters_model$gamma, 3),
+    NA, NA, round(cn_winters_model$gamma, 3)
+  ),
+  SSE = round(c(
+    kr_ses_model$SSE, kr_holt_model$SSE, kr_winters_model$SSE,
+    in_ses_model$SSE, in_holt_model$SSE, in_winters_model$SSE,
+    cn_ses_model$SSE, cn_holt_model$SSE, cn_winters_model$SSE
+  ), 0)
+)
+
+smoothing_output
+```
+
+South Korea's SES and Holt results are very similar because Holt's estimated beta is zero. India also has a very small Holt beta, so its trend changes slowly. China has a much larger alpha and a positive beta. This means its Holt forecast reacts strongly to the recent decline in the series.
+
+The Holt-Winters model is additive. This is appropriate for the class method and it can be estimated when the data contains zeros. One limitation is that trend and additive models can produce negative forecasts. That happens for some China forecasts even though actual export volume cannot be negative. I leave the models unchanged so that the class methods are compared as they were taught.
+
+## 3. Time Series and Model Forecasts
+
+The black line is the historical series through December 2025. The vertical dotted line marks the beginning of 2026. The colored lines are the 12-month forecasts from the different class methods.
+
+### South Korea Forecasts
+
+```{r korea-forecast-chart}
+kr_range <- range(
+  korea_ts, kr_mean$mean, kr_naive$mean, kr_drift$mean,
+  kr_snaive$mean, kr_ses$mean, kr_holt$mean, kr_winters$mean
+)
+
+plot(
+  korea_ts,
+  type = "l",
+  col = "black",
+  lwd = 2,
+  xlim = c(2022, 2027),
+  ylim = kr_range,
+  main = "South Korea: Historical Values and 2026 Forecasts",
+  xlab = "Year",
+  ylab = "Million Cubic Feet"
+)
+abline(v = 2026, col = "gray50", lty = 3)
+lines(kr_mean$mean, col = "darkorange", lwd = 2)
+lines(kr_naive$mean, col = "red", lwd = 2)
+lines(kr_drift$mean, col = "green4", lwd = 2)
+lines(kr_snaive$mean, col = "purple", lwd = 2)
+lines(kr_ses$mean, col = "blue", lwd = 2)
+lines(kr_holt$mean, col = "darkcyan", lwd = 2, lty = 2)
+lines(kr_winters$mean, col = "brown", lwd = 2)
+legend(
+  "topleft",
+  legend = c("Actual", "Mean", "Naive", "Drift", "Seasonal Naive", "SES", "Holt", "Holt-Winters"),
+  col = c("black", "darkorange", "red", "green4", "purple", "blue", "darkcyan", "brown"),
+  lty = c(1, 1, 1, 1, 1, 1, 2, 1),
+  lwd = 2,
+  cex = 0.72,
+  ncol = 2,
+  bty = "n"
+)
+```
+
+### India Forecasts
+
+```{r india-forecast-chart}
+in_range <- range(
+  india_ts, in_mean$mean, in_naive$mean, in_drift$mean,
+  in_snaive$mean, in_ses$mean, in_holt$mean, in_winters$mean
+)
+
+plot(
+  india_ts,
+  type = "l",
+  col = "black",
+  lwd = 2,
+  xlim = c(2022, 2027),
+  ylim = in_range,
+  main = "India: Historical Values and 2026 Forecasts",
+  xlab = "Year",
+  ylab = "Million Cubic Feet"
+)
+abline(v = 2026, col = "gray50", lty = 3)
+lines(in_mean$mean, col = "darkorange", lwd = 2)
+lines(in_naive$mean, col = "red", lwd = 2)
+lines(in_drift$mean, col = "green4", lwd = 2)
+lines(in_snaive$mean, col = "purple", lwd = 2)
+lines(in_ses$mean, col = "blue", lwd = 2)
+lines(in_holt$mean, col = "darkcyan", lwd = 2, lty = 2)
+lines(in_winters$mean, col = "brown", lwd = 2)
+legend(
+  "topleft",
+  legend = c("Actual", "Mean", "Naive", "Drift", "Seasonal Naive", "SES", "Holt", "Holt-Winters"),
+  col = c("black", "darkorange", "red", "green4", "purple", "blue", "darkcyan", "brown"),
+  lty = c(1, 1, 1, 1, 1, 1, 2, 1),
+  lwd = 2,
+  cex = 0.72,
+  ncol = 2,
+  bty = "n"
+)
+```
+
+### China Forecasts
+
+```{r china-forecast-chart}
+cn_range <- range(
+  china_ts, cn_mean$mean, cn_naive$mean, cn_drift$mean,
+  cn_snaive$mean, cn_ses$mean, cn_holt$mean, cn_winters$mean
+)
+
+plot(
+  china_ts,
+  type = "l",
+  col = "black",
+  lwd = 2,
+  xlim = c(2022, 2027),
+  ylim = cn_range,
+  main = "China: Historical Values and 2026 Forecasts",
+  xlab = "Year",
+  ylab = "Million Cubic Feet"
+)
+abline(v = 2026, col = "gray50", lty = 3)
+lines(cn_mean$mean, col = "darkorange", lwd = 2)
+lines(cn_naive$mean, col = "red", lwd = 2)
+lines(cn_drift$mean, col = "green4", lwd = 2)
+lines(cn_snaive$mean, col = "purple", lwd = 2)
+lines(cn_ses$mean, col = "blue", lwd = 2)
+lines(cn_holt$mean, col = "darkcyan", lwd = 2, lty = 2)
+lines(cn_winters$mean, col = "brown", lwd = 2)
+legend(
+  "topleft",
+  legend = c("Actual", "Mean", "Naive", "Drift", "Seasonal Naive", "SES", "Holt", "Holt-Winters"),
+  col = c("black", "darkorange", "red", "green4", "purple", "blue", "darkcyan", "brown"),
+  lty = c(1, 1, 1, 1, 1, 1, 2, 1),
+  lwd = 2,
+  cex = 0.72,
+  ncol = 2,
+  bty = "n"
+)
+```
+
+The forecasts differ because the methods use history differently. Mean, naive, and SES produce nearly level forecasts. Drift and Holt extend a trend. Seasonal naive repeats 2025 month by month, while Holt-Winters combines level, trend, and seasonality. China's trend-based forecasts become negative, which is a warning that those models are not realistic for a quantity that cannot fall below zero.
+
+## 4. Accuracy Comparison and Best Model
+
+I use **mean squared error (MSE)** because MSE was used in the class exercise. Here, MSE summarizes each model's historical fitted errors. A residual is the difference between an observed value and the value fitted by the model. Squaring the residuals prevents positive and negative errors from canceling, and a lower MSE is better.
+
+I do not use MAPE because the data includes months with zero exports. Percentage errors are not defined when the actual value is zero. The comparison uses the complete historical series.
+
+```{r accuracy-comparison}
+MSE <- function(residuals) {
+  mean(residuals^2, na.rm = TRUE)
+}
+
+model_names <- c(
+  "Simple Average",
+  "Naive",
+  "Naive with Drift",
+  "Seasonal Naive",
+  "SES",
+  "Holt",
+  "Holt-Winters"
+)
+
+korea_mse <- c(
+  MSE(kr_mean$residuals),
+  MSE(kr_naive$residuals),
+  MSE(kr_drift$residuals),
+  MSE(kr_snaive$residuals),
+  kr_ses_model$SSE / nrow(kr_ses_model$fitted),
+  kr_holt_model$SSE / nrow(kr_holt_model$fitted),
+  kr_winters_model$SSE / nrow(kr_winters_model$fitted)
+)
+
+india_mse <- c(
+  MSE(in_mean$residuals),
+  MSE(in_naive$residuals),
+  MSE(in_drift$residuals),
+  MSE(in_snaive$residuals),
+  in_ses_model$SSE / nrow(in_ses_model$fitted),
+  in_holt_model$SSE / nrow(in_holt_model$fitted),
+  in_winters_model$SSE / nrow(in_winters_model$fitted)
+)
+
+china_mse <- c(
+  MSE(cn_mean$residuals),
+  MSE(cn_naive$residuals),
+  MSE(cn_drift$residuals),
+  MSE(cn_snaive$residuals),
+  cn_ses_model$SSE / nrow(cn_ses_model$fitted),
+  cn_holt_model$SSE / nrow(cn_holt_model$fitted),
+  cn_winters_model$SSE / nrow(cn_winters_model$fitted)
+)
+
+accuracy_table <- data.frame(
+  Model = model_names,
+  South_Korea_MSE = round(korea_mse, 0),
+  India_MSE = round(india_mse, 0),
+  China_MSE = round(china_mse, 0)
+)
+
+accuracy_table$Average_MSE <- round(
+  rowMeans(accuracy_table[, 2:4]),
+  0
+)
+
+accuracy_table <- accuracy_table[order(accuracy_table$Average_MSE), ]
+accuracy_table
+
+best_models <- data.frame(
+  Country = c("South Korea", "India", "China"),
+  Best_Model = c(
+    model_names[which.min(korea_mse)],
+    model_names[which.min(india_mse)],
+    model_names[which.min(china_mse)]
+  ),
+  Historical_MSE = round(c(
+    min(korea_mse),
+    min(india_mse),
+    min(china_mse)
+  ), 0)
+)
+
+best_models
+```
+
+Simple exponential smoothing has the lowest historical MSE for all three countries. It is therefore the best model by the selected accuracy measure.
+
+- **South Korea:** SES has an MSE of about 105.8 million squared units. Holt is close, but adding a trend does not improve the fit.
+- **India:** SES has an MSE of about 34.6 million squared units, slightly lower than Holt.
+- **China:** SES has an MSE of about 90.3 million squared units. Naive and drift are close, while the more complex trend and seasonal methods do not improve the historical fit.
+
+Seasonal naive has the largest error for each country. This suggests that the month-to-month pattern does not repeat consistently enough for simply copying the previous year to work well. SES performs best because it updates the current level while avoiding an unstable trend or seasonal pattern.
+
+## Conclusion
+
+The results show that U.S. LNG export markets can have different levels, volatility, and predictability. Based on historical fitted MSE, simple exponential smoothing is the best of the class methods for South Korea, India, and China. This does not guarantee that SES will have the most accurate 2026 forecast, but it has produced the smallest average squared fitted error in the available history.
+
+The geopolitical comparison is still useful as business context. South Korea, India, and China show noticeably different trade patterns, and the China series changes most sharply near the end of the data. However, this univariate analysis does not identify the cause of those differences. A stronger causal study would need additional variables such as LNG prices, contract terms, freight costs, demand, sanctions or tariffs, and major policy events.
