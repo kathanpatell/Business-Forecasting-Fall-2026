@@ -1,0 +1,129 @@
+---
+title: "Decomposition of U.S. LNG Export Volumes"
+subtitle: "South Korea, India, and China"
+author: "Kathan Patel"
+date: "October 11, 2026"
+output:
+  html_document:
+    self_contained: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 9,
+  fig.height = 6
+)
+options(scipen = 999)
+```
+
+## Data
+
+For this analysis, I used monthly U.S. liquefied natural gas (LNG) export volumes to South Korea, India, and China. The values are measured in million cubic feet. The data runs from January 2017 through December 2025, giving 108 monthly observations for each country.
+
+```{r packages-and-data}
+library(readxl)
+library(fpp2)
+
+lng <- read_excel(
+  "US_LNG_Export_Volumes_2017_2025.xlsx",
+  sheet = "Monthly Data"
+)
+
+head(lng)
+```
+
+## Create the Time Series
+
+I converted each country column into a time series. Since the data is monthly, the frequency is 12.
+
+```{r create-time-series}
+korea_ts <- ts(lng$South_Korea, start = c(2017, 1), frequency = 12)
+india_ts <- ts(lng$India, start = c(2017, 1), frequency = 12)
+china_ts <- ts(lng$China, start = c(2017, 1), frequency = 12)
+```
+
+## Decomposition Method
+
+I used STL decomposition to separate each series into trend, seasonal, and remainder components. Setting `s.window = "periodic"` keeps the same monthly seasonal pattern from year to year.
+
+I used an additive decomposition because the dataset includes months with zero exports, especially in the China series. A multiplicative decomposition would not be a good choice for those zero values.
+
+## South Korea
+
+```{r korea-decomposition}
+korea_stl <- stl(korea_ts, s.window = "periodic")
+plot(korea_stl)
+```
+
+South Korea's exports rise quickly during the early years. The trend reaches its highest point around 2021, then moves downward and levels off near the end of the period. There is a repeating monthly pattern, but the remainder still contains several large movements. This means that seasonality and trend do not explain every change in the series.
+
+I also removed the seasonal component using `seasadj()`. In the next graph, the black line is the original series and the red line is the seasonally adjusted series.
+
+```{r korea-seasonally-adjusted}
+korea_adjusted <- seasadj(korea_stl)
+
+plot(
+  korea_ts,
+  main = "South Korea: Original and Seasonally Adjusted",
+  xlab = "Year",
+  ylab = "Million Cubic Feet"
+)
+lines(korea_adjusted, col = "Red")
+```
+
+The red line removes the regular monthly effect, but the larger peaks and drops are still present. Those changes appear to be irregular rather than part of the normal seasonal pattern.
+
+## India
+
+```{r india-decomposition}
+india_stl <- stl(india_ts, s.window = "periodic")
+plot(india_stl)
+```
+
+India shows a general upward trend across the full period. The trend is highest around 2024 and then drops during 2025, although it is still much higher than it was in 2017. The seasonal component repeats each year, while the remainder shows several months that do not follow the usual pattern.
+
+```{r india-seasonally-adjusted}
+india_adjusted <- seasadj(india_stl)
+
+plot(
+  india_ts,
+  main = "India: Original and Seasonally Adjusted",
+  xlab = "Year",
+  ylab = "Million Cubic Feet"
+)
+lines(india_adjusted, col = "Red")
+```
+
+The seasonally adjusted line still shows the overall growth and the large increase in 2024. This suggests that the 2024 increase was not simply the result of a normal seasonal change.
+
+## China
+
+```{r china-decomposition}
+china_stl <- stl(china_ts, s.window = "periodic")
+plot(china_stl)
+```
+
+China has the most uneven pattern of the three countries. Its trend rises sharply and peaks around 2021. It then falls, recovers for a period, and drops close to zero by the end of 2025. The large movements in the remainder show that irregular changes play an important role in this series.
+
+```{r china-seasonally-adjusted}
+china_adjusted <- seasadj(china_stl)
+
+plot(
+  china_ts,
+  main = "China: Original and Seasonally Adjusted",
+  xlab = "Year",
+  ylab = "Million Cubic Feet"
+)
+lines(china_adjusted, col = "Red")
+```
+
+China's major increases and decreases remain visible after seasonality is removed. The 2025 decline is therefore not just a normal seasonal change. Some adjusted values fall below zero because a positive seasonal amount is being removed from a month with little or no exports. The actual export values were not negative.
+
+## Conclusion
+
+The three countries have noticeably different patterns. South Korea grows strongly before leveling off below its 2021 peak. India has the clearest long-term increase. China changes the most and ends the period near zero.
+
+Seasonality is present in all three series, but it explains only part of the monthly movement. Large irregular changes remain even after seasonal adjustment. The decomposition helps describe what happened in the data, but it does not identify a single cause. LNG demand, prices, contracts, shipping conditions, and international events could all contribute to the patterns.
